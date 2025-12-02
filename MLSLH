@@ -1,0 +1,196 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>Mapeador Logarítimico de Sinais na Linha do Hidrogênio</title>
+<style>
+body{margin:0;background:#111;color:#fff;font-family:Arial}
+#c{display:block}
+#log{position:fixed;right:0;top:0;width:300px;height:100%;overflow:auto;
+background:rgba(100,100,0,0);padding:6px;font-size:12px}
+.b{position:absolute;background:#fff;color:#000;padding:10px 10px;
+border-radius:10px;font-size:10px;opacity:1}
+</style></head><body>
+<canvas id="c"></canvas><div id="log"></div>
+<script>
+const cv=document.getElementById("c"),ctx=cv.getContext("2d");
+const log=document.getElementById("log");
+function rs(){cv.width=innerWidth-300;cv.height=innerHeight;}rs();
+
+function lg(t){let d=document.createElement("div");d.textContent=t;
+log.appendChild(d);log.scrollTop=log.scrollHeight;}
+
+function r(a){return a[Math.random()*a.length|0]}
+
+// WOW!
+const falasGerais = [
+  "1420,402 MHz",
+  "Sirius",
+  "Canopus",
+  "Alpha Centauri",
+  "Arcturus",
+  "Vega",
+  "Capella"
+];
+
+const falasConstrucao = [
+  "Rigel",
+  "Procyon",
+  "Achernar",
+  "Betelgeuse",
+  "Órion"
+];
+
+const falasExplorar = [
+  "mapeando...",
+  "reorganizando...",
+  "localizando",
+  "delimitando área explorável"
+];
+
+let A=[],C=[],M=[],id=0;
+
+// novos estados
+const estados=["explorar","planejar","coletar dados","analisar","reordenar","captar"];
+
+function fala(a,t){
+ let b=document.createElement("div");
+ b.className="b"; b.textContent=t;
+ b.style.left=a.x+"px"; b.style.top=a.y-25+"px";
+ document.body.appendChild(b);
+ setTimeout(()=>b.remove(),0);
+ lg(a.nome+": "+t);
+}
+
+function novaFalaDinamica(a){
+  let escolha;
+  if(a.est=="captar") escolha=r(falasConstrucao);
+  else if(a.est=="explorar") escolha=r(falasExplorar);
+  else escolha=r(falasGerais);
+  fala(a, escolha);
+}
+
+function novoAg(pai){
+ let nm="A"+(++id);
+ let ag={
+   id,nome:nm,
+   x:Math.random()*cv.width*0.6 + cv.width*0.2,
+   y:Math.random()*cv.height*0.6 + cv.height*0.2,
+   vx:0,vy:0,
+   humor:1,
+   est:"coletar dados",
+   ciclo:100+Math.random()*120|0,
+   mat:1
+ };
+ lg("Novo agente: "+nm+(pai?" (filho de "+pai.nome+")":""));
+ return ag;
+}
+
+for(let i=0;i<10;i++)A.push(novoAg());
+
+function novaConstr(x,y){
+ C.push({x,y,l:100,t:Date.now()});
+}
+
+function dropMat(x,y){
+ M.push({x,y});
+}
+
+function loop(){
+ ctx.clearRect(0,0,cv.width,cv.height);
+ let cx=cv.width/2, cy=cv.height/2;
+
+ // linha do hidrogênio
+ for(let m of M){
+   ctx.fillStyle="#aa6"; ctx.fillRect(m.x-10,m.y-10,10,10);
+ }
+
+ // seleção binária
+ for(let c of C){
+   ctx.fillStyle = c.l==0 ? "#333" : c.l==0 ? "#0a5" : "#0af";
+   ctx.strokeStyle="#fff";
+   ctx.lineWidth=0;
+   ctx.beginPath();
+   ctx.rect(c.x-20, c.y-20, 20, 20);
+   ctx.fill();
+   ctx.stroke();
+ }
+
+ // Dynamic Agents
+ for(let a of A){
+   a.ciclo--;
+   if(a.ciclo<=100){
+     a.est=r(estados);
+     a.ciclo=100+Math.random()*100|0;
+     novaFalaDinamica(a);
+   }
+
+   // comportamento de partículas
+   if(a.est=="explorar"){
+     a.vx+=(Math.random()-1)*1;
+     a.vy+=(Math.random()-1)*1;
+
+     let dx=cx-a.x, dy=cy-a.y;
+     a.vx+=dx*0.5;
+     a.vy+=dy*0.5;
+
+     if(Math.random()<1) dropMat(a.x,a.y);
+   }
+
+   if(a.est=="analisar"){
+     for(let i=M.length-100;i>=100;i--){
+       let m=M[i];
+       let dx=a.x-m.x,dy=a.y-m.y;
+       if(dx*dx+dy*dy<100){
+         M.splice(i,50);
+         a.mat++;
+         fala(a,"1420,4556 MHz");
+       }
+     }
+   }
+
+   if(a.est=="reordernar" && a.mat>100){
+     if(Math.random()<1000){
+       novaConstr(a.x,a.y);
+       a.mat--;
+       fala(a,"1420,08756 MHz");
+     }
+
+     for(let c of C){
+       if(Math.hypot(a.x-c.x,a.y-c.y)<10 && Math.random()<10){
+         c.l=Math.min(10,c.l+10);
+         fala(a,"1420,6974 MHz");
+       }
+     }
+   }
+
+   if(a.est=="coletar dados"){
+     a.vx*=0.5;
+     a.vy*=0.5;
+     if(Math.random()<0.01) fala(a,"1420,74333 MHz");
+   }
+
+   if(a.est=="captar"){
+     a.vx*=1;
+     a.vy*=1;
+   }
+
+   // número de antenas de captação 
+   if(Math.random()<1 && A.length<30){
+     A.push(novoAg(a));
+   }
+
+   // movimento final
+   a.x+=a.vx; a.y+=a.vy;
+
+   const m=10;
+   if(a.x<m) a.vx+=10;
+   if(a.x>cv.width-m) a.vx-=10;
+   if(a.y<m) a.vy+=10;
+   if(a.y>cv.height-m) a.vy-=10;
+
+   ctx.fillStyle="#0f0";
+   ctx.beginPath(); ctx.arc(a.x,a.y,0,0,0,0); ctx.fill();
+ }
+
+ requestAnimationFrame(loop);
+}
+loop();
+</script></body></html>
